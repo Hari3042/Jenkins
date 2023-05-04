@@ -1,7 +1,0 @@
-spring.flyway.enabled: true
-flyway.enabled: true
-
-feature.file.path: ${FEATURE_FILE_PATH:/tmp}
-
-togglz.features.DATABASE.enabled: ${FEATURE_DB_ENABLED:true}
-togglz.features.FILE.enabled: ${FEATURE_FILE_ENABLED:true}
