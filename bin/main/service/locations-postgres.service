@@ -1,0 +1,15 @@
+[Unit]
+Description=Locations Service - Postgres Backend
+After=syslog.target
+
+[Service]
+User=locations
+WorkingDirectory=/opt/prod
+ExecStart=/bin/java -Xms128m -Xmx256m -jar -Dspring-boot.run.profiles=postgres locations-postgres.jar
+SuccessExitStatus=0
+Type=simple
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

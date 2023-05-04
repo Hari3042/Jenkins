@@ -1,0 +1,104 @@
+plugins {
+	id 'org.springframework.boot' version '2.6.5'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'java'
+	id "com.netflix.nebula.ospackage" version "11.0.0"
+}
+
+group = 'com.appranix.demo'
+//version = '0.0.1'
+sourceCompatibility = '17'
+
+repositories {
+	mavenCentral()
+}
+
+configurations {
+	mysqlRuntimeOnly
+	postgresRuntimeOnly
+	h2RuntimeOnly
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.flywaydb:flyway-core'
+
+	implementation "org.togglz:togglz-spring-boot-starter:3.1.2"
+
+	h2RuntimeOnly 'com.h2database:h2'
+	mysqlRuntimeOnly 'mysql:mysql-connector-java:8.0.28'
+	postgresRuntimeOnly 'org.postgresql:postgresql:42.3.3'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'com.h2database:h2'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+
+}
+
+task h2Jar(type: org.springframework.boot.gradle.tasks.bundling.BootJar){
+	archiveBaseName.set("locations-h2-embedded")
+	mainClass = 'com.appranix.demo.locations.LocationsApplication'
+	from {
+		// this is your second jar's configuration
+		configurations.h2RuntimeOnly.collect { it.isDirectory() ? it : zipTree(it) }
+	}
+	with bootJar
+}
+
+task mysqlJar(type: org.springframework.boot.gradle.tasks.bundling.BootJar){
+	//baseName 'locations-mysql'
+	archiveBaseName.set("locations-mysql")
+	mainClass = 'com.appranix.demo.locations.LocationsApplication'
+	from {
+		configurations.mysqlRuntimeOnly.collect { it.isDirectory() ? it : zipTree(it) }
+	}
+	with bootJar
+}
+
+task postgresJar(type: org.springframework.boot.gradle.tasks.bundling.BootJar){
+	archiveBaseName.set("locations-postgres")
+	mainClass = 'com.appranix.demo.locations.LocationsApplication'
+	from {
+		configurations.postgresRuntimeOnly.collect { it.isDirectory() ? it : zipTree(it) }
+	}
+	with bootJar
+}
+
+bootJar.dependsOn h2Jar, mysqlJar, postgresJar
+
+task mysqlDeb(type: Deb) {
+	packageName 'locations-mysql'
+	release '1'
+	user 'locations'
+}
+
+mysqlDeb.dependsOn mysqlJar
+
+task postgresDeb(type: Deb) {
+	packageName 'locations-postgres'
+	release '1'
+	user 'locations'
+
+	into '/opt/locations'
+
+	from(postgresJar.outputs.files) {
+		into 'lib'
+	}
+
+	from('src/main/resources/service') {
+		into 'service'
+	}
+
+	from('src/main/resources/scripts') {
+		into 'bin'
+	}
+
+	link('/etc/systemd/system/locations-postgres.service', '/opt/locations/service/locations-postgres.service')
+
+}
+
+postgresDeb.dependsOn postgresJar
